@@ -1,0 +1,15 @@
+rules_version='2';
+service cloud.firestore{match /databases/{d}/documents{
+ function role(){return get(/databases/$(d)/documents/users/$(request.auth.uid)).data.role}
+ function adm(){return request.auth!=null&&(role()=='admin'||role()=='owner')}
+ match /users/{u}{allow read:if request.auth!=null;
+  allow create:if request.auth.uid==u&&request.resource.data.role=='user';
+  allow update:if (request.auth.uid==u&&request.resource.data.role==resource.data.role)||role()=='owner';
+  allow delete:if role()=='owner';
+  match /favs/{f}{allow read,write:if request.auth.uid==u}}
+ match /titles/{t}{allow read:if true;allow write:if adm();
+  match /episodes/{e}{allow read:if true;allow write:if adm()}}
+ match /comments/{c}{allow read:if true;
+  allow create:if request.auth!=null&&request.resource.data.uid==request.auth.uid;
+  allow delete:if request.auth!=null&&(resource.data.uid==request.auth.uid||adm())}
+}}

@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#e11d48" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon-192.png" />
+    <title>سینما</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #08080c;
+        --card: #14141c;
+        --tx: #f2f2f7;
+        --mu: #8b8b9e;
+        --r: #e11d48;
+        --b: #2563eb;
+        --bd: #262634;
+      }
+      [data-t="light"] {
+        --bg: #f4f5fa;
+        --card: #fff;
+        --tx: #14141c;
+        --mu: #6a6a7c;
+        --bd: #dcdce8;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font:
+          400 15px/1.7 Vazirmatn,
+          system-ui,
+          sans-serif;
+        background: var(--bg);
+        color: var(--tx);
+        padding: 0 0 76px;
+      }
+      main {
+        max-width: 720px;
+        margin: auto;
+        padding: 14px;
+        padding-top: max(14px, env(safe-area-inset-top));
+      }
+      h1,
+      h2 {
+        font-weight: 900;
+      }
+      h2 {
+        margin: 16px 0 8px;
+      }
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+        color: inherit;
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 10px;
+        padding: 9px 12px;
+        width: 100%;
+      }
+      textarea {
+        min-height: 70px;
+      }
+      button {
+        cursor: pointer;
+        width: auto;
+        background: linear-gradient(90deg, var(--r), var(--b));
+        border: 0;
+        color: #fff;
+        font-weight: 700;
+      }
+      button.g {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        color: var(--tx);
+      }
+      button.d {
+        background: #7f1d1d;
+      }
+      form,
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 8px 0;
+      }
+      form > * {
+        flex: 1 1 140px;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        margin: 10px 0;
+      }
+      .tabs button {
+        flex: 1;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        overflow: auto;
+        padding-bottom: 6px;
+      }
+      .chips button {
+        white-space: nowrap;
+        padding: 4px 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+      }
+      .c {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .c img {
+        width: 100%;
+        aspect-ratio: 2/3;
+        object-fit: cover;
+        background: var(--bd);
+        display: block;
+      }
+      .c b {
+        display: block;
+        padding: 6px 8px;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .box {
+        background: var(--card);
+        border: 1px solid var(--bd);
+        border-radius: 12px;
+        padding: 10px;
+        margin: 8px 0;
+      }
+      .mu {
+        color: var(--mu);
+        font-size: 13px;
+      }
+      .rp {
+        margin-inline-start: 22px;
+        border-inline-start: 3px solid var(--b);
+      }
+      nav {
+        position: fixed;
+        inset: auto 0 0;
+        display: flex;
+        background: var(--card);
+        border-top: 2px solid var(--r);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      nav a {
+        flex: 1;
+        text-align: center;
+        padding: 12px 0;
+        color: var(--mu);
+        text-decoration: none;
+        font-weight: 700;
+      }
+      nav a.on {
+        color: var(--r);
+      }
+      video {
+        width: 100%;
+        border-radius: 12px;
+        background: #000;
+        max-height: 60vh;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="v"></main>
+    <nav id="n"></nav>
+    <script type="module">
+      import { cfg, TMDB } from "./config.js";
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        updatePassword,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getFirestore,
+        doc,
+        getDoc,
+        setDoc,
+        updateDoc,
+        deleteDoc,
+        collection,
+        query,
+        where,
+        getDocs,
+        addDoc,
+        onSnapshot,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+      const app = initializeApp(cfg),
+        auth = getAuth(app),
+        db = getFirestore(app);
+      const $ = (s) => document.querySelector(s),
+        esc = (s) =>
+          String(s ?? "").replace(
+            /[&<>"']/g,
+            (c) =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;",
+              })[c],
+          );
+      const T = { anime: "انیمه", movie: "فیلم", tv: "سریال" },
+        AG = [
+          "Action",
+          "Adventure",
+          "Comedy",
+          "Drama",
+          "Fantasy",
+          "Horror",
+          "Romance",
+          "Sci-Fi",
+          "Slice of Life",
+          "Sports",
+          "Thriller",
+        ];
+      let me = null,
+        prof = null,
+        st = { type: "anime", genre: "", q: "" },
+        cache = {},
+        tg = [],
+        unsub = null,
+        rep = null;
+      const role = () => prof?.role || "guest",
+        adm = () => role() == "admin" || role() == "owner";
+      document.documentElement.dataset.t = localStorage.t || "dark";
+      const ani = async () => {
+        const f = `type:ANIME,${st.q ? "search:" + JSON.stringify(st.q) : "sort:UPDATED_AT_DESC,status:RELEASING"}${st.genre ? ",genre:" + JSON.stringify(st.genre) : ""}`;
+        const r = await fetch("https://graphql.anilist.co", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `{Page(perPage:30){media(${f}){id title{romaji} coverImage{large} description genres}}}`,
+          }),
+        }).then((r) => r.json());
+        return r.data.Page.media.map((m) => ({
+          id: "a" + m.id,
+          type: "anime",
+          title: m.title.romaji,
+          poster: m.coverImage.large,
+          desc: (m.description || "").replace(/<[^>]+>/g, ""),
+          genres: m.genres,
+        }));
+      };
+      const tm = async () => {
+        const t = st.type,
+          b = "https://api.themoviedb.org/3",
+          k = `api_key=${TMDB}&language=en-US`;
+        const u = st.q
+          ? `${b}/search/${t}?${k}&query=${encodeURIComponent(st.q)}`
+          : st.genre
+            ? `${b}/discover/${t}?${k}&with_genres=${st.genre}`
+            : `${b}/trending/${t}/week?${k}`;
+        const r = await fetch(u).then((r) => r.json());
+        return (r.results || []).map((m) => ({
+          id: (t == "movie" ? "m" : "s") + m.id,
+          type: t,
+          title: m.title || m.name,
+          poster: m.poster_path
+            ? "https://image.tmdb.org/t/p/w342" + m.poster_path
+            : "",
+          desc: m.overview,
+          genres: [],
+        }));
+      };
+      const mine = async () =>
+        (await getDocs(collection(db, "titles"))).docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(
+            (x) =>
+              x.type == st.type &&
+              (!st.q || x.title.toLowerCase().includes(st.q.toLowerCase())) &&
+              (!st.genre || (x.genres || []).includes(st.genre)),
+          );
+      const card = (x) => {
+        cache[x.id] = x;
+        return `<div class="c" data-go="#/t/${x.id}"><img loading="lazy" src="${esc(x.poster)}" alt=""><b>${esc(x.title)}</b></div>`;
+      };
+      async function home() {
+        const V = $("#v");
+        if ((st.type != "anime" && !tg.length) || tg.t != st.type) {
+          tg =
+            st.type == "anime"
+              ? AG.map((g) => ({ id: g, name: g }))
+              : (
+                  await fetch(
+                    `https://api.themoviedb.org/3/genre/${st.type}/list?api_key=${TMDB}`,
+                  )
+                    .then((r) => r.json())
+                    .catch(() => ({}))
+                ).genres || [];
+          tg.t = st.type;
+        }
+        V.innerHTML = `<h1>سینما</h1><div class="tabs">${Object.entries(T)
+          .map(
+            ([k, v]) =>
+              `<button class="${k == st.type ? "" : "g"}" data-ty="${k}">${v}</button>`,
+          )
+          .join("")}</div>
+ <form id="sf"><input name="q" placeholder="جستجوی ${T[st.type]}..." value="${esc(st.q)}"><button>جستجو</button></form>
+ <div class="chips"><button class="${st.genre ? "g" : ""}" data-g="">همه</button>${tg.map((g) => `<button class="${st.genre == g.id ? "" : "g"}" data-g="${g.id}">${g.name}</button>`).join("")}</div><div class="grid" id="gr">...</div>`;
+        try {
+          const [a, b] = await Promise.all([
+            mine(),
+            st.type == "anime" ? ani() : tm(),
+          ]);
+          $("#gr").innerHTML =
+            [...a, ...b].map(card).join("") ||
+            '<p class="mu">موردی پیدا نشد.</p>';
+        } catch (e) {
+          $("#gr").innerHTML =
+            '<p class="mu">خطا در دریافت اطلاعات. کلید API و اینترنت را بررسی کن.</p>';
+        }
+      }
+      async function detail(id) {
+        const V = $("#v"),
+          it = cache[id];
+        if (!it) return (location.hash = "#/");
+        const eps = (
+          await getDocs(collection(db, "titles", id, "episodes"))
+        ).docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => a.season - b.season || a.num - b.num);
+        let fav =
+          me && (await getDoc(doc(db, "users", me.uid, "favs", id))).exists();
+        V.innerHTML = `<button class="g" data-go="#/">← بازگشت</button><div class="row" style="margin-top:12px"><img src="${esc(it.poster)}" style="width:110px;border-radius:12px"><div style="flex:1"><h1>${esc(it.title)}</h1><p class="mu">${T[it.type]} ${(it.genres || []).join("، ")}</p>${me ? `<button id="fv">${fav ? "حذف از علاقه‌مندی" : "افزودن به علاقه‌مندی"}</button>` : ""}</div></div>
+ <p class="mu">${esc(it.desc).slice(0, 500)}</p><div id="pl"></div><h2>قسمت‌ها</h2>
+ ${eps.map((e) => `<div class="box row" style="align-items:center"><b style="flex:1">فصل ${e.season} - قسمت ${e.num} ${esc(e.name || "")}</b><button data-p="${e.id}">پخش</button>${adm() ? `<button class="g" data-ed="${e.id}">ویرایش</button><button class="d" data-de="${e.id}">حذف</button>` : ""}</div>`).join("") || '<p class="mu">هنوز قسمتی اضافه نشده.</p>'}
+ ${adm() ? `<h2>افزودن قسمت</h2><form id="ef"><input name="season" type="number" placeholder="فصل" value="1" required><input name="num" type="number" placeholder="شماره قسمت" required><input name="name" placeholder="عنوان"><input name="subUrl" placeholder="لینک ویدیو (زیرنویس)"><input name="vtt" placeholder="لینک فایل زیرنویس .vtt"><input name="dubUrl" placeholder="لینک ویدیو (دوبله)"><button>افزودن</button></form>` : ""}
+ <h2>نظرات</h2><div id="cm"></div>${me ? `<form id="cf"><textarea name="t" placeholder="نظرت را بنویس..." required></textarea><button>ارسال</button></form>` : '<p class="mu">برای نظر دادن وارد شو.</p>'}`;
+        const play = (e, k) => {
+          const u = k == "dub" ? e.dubUrl : e.subUrl;
+          $("#pl").innerHTML =
+            `<video controls autoplay src="${esc(u)}" crossorigin="anonymous">${k != "dub" && e.vtt ? `<track kind="subtitles" srclang="fa" label="فارسی" src="${esc(e.vtt)}" default>` : ""}</video><div class="row">${e.subUrl ? `<button class="${k == "dub" ? "g" : ""}" data-k="sub">زیرنویس</button>` : ""}${e.dubUrl ? `<button class="${k == "dub" ? "" : "g"}" data-k="dub">دوبله</button>` : ""}<a href="${esc(u)}" download><button class="g" type="button">دانلود</button></a></div>`;
+          $("#pl").onclick = (ev) => {
+            const b = ev.target.closest("[data-k]");
+            b && play(e, b.dataset.k);
+          };
+        };
+        V.onclick = async (ev) => {
+          const t = ev.target,
+            g = (s) => t.closest(s)?.dataset;
+          if (g("[data-go]")) return (location.hash = g("[data-go]").go);
+          if (g("[data-p]")) {
+            const e = eps.find((x) => x.id == g("[data-p]").p);
+            play(e, e.subUrl ? "sub" : "dub");
+            $("#pl").scrollIntoView();
+          }
+          if (t.id == "fv") {
+            const r = doc(db, "users", me.uid, "favs", id);
+            fav ? await deleteDoc(r) : await setDoc(r, it);
+            detail(id);
+          }
+          if (g("[data-de]") && confirm("حذف شود؟")) {
+            await deleteDoc(
+              doc(db, "titles", id, "episodes", g("[data-de]").de),
+            );
+            detail(id);
+          }
+          if (g("[data-ed]")) {
+            const e = eps.find((x) => x.id == g("[data-ed]").ed),
+              n = {};
+            for (const k of ["name", "subUrl", "vtt", "dubUrl"]) {
+              const v = prompt(k, e[k] || "");
+              if (v === null) return;
+              n[k] = v;
+            }
+            await updateDoc(doc(db, "titles", id, "episodes", e.id), n);
+            detail(id);
+          }
+          if (g("[data-rp]")) {
+            rep = g("[data-rp]").rp;
+            $("#cf textarea").placeholder = "پاسخ...";
+            $("#cf textarea").focus();
+          }
+          if (g("[data-dc]") && confirm("نظر حذف شود؟"))
+            await deleteDoc(doc(db, "comments", g("[data-dc]").dc));
+        };
+        V.onsubmit = async (ev) => {
+          ev.preventDefault();
+          const f = Object.fromEntries(new FormData(ev.target));
+          if (ev.target.id == "ef") {
+            f.season = +f.season;
+            f.num = +f.num;
+            await setDoc(
+              doc(db, "titles", id, "episodes", `s${f.season}e${f.num}`),
+              f,
+            );
+            detail(id);
+          }
+          if (ev.target.id == "cf") {
+            await addDoc(collection(db, "comments"), {
+              tid: id,
+              uid: me.uid,
+              name: prof.name,
+              text: f.t,
+              parent: rep || "",
+              ts: Date.now(),
+            });
+            rep = null;
+            ev.target.reset();
+          }
+        };
+        unsub?.();
+        unsub = onSnapshot(
+          query(collection(db, "comments"), where("tid", "==", id)),
+          (s) => {
+            const a = s.docs
+                .map((d) => ({ id: d.id, ...d.data() }))
+                .sort((x, y) => x.ts - y.ts),
+              row = (c, r) =>
+                `<div class="box ${r ? "rp" : ""}"><b>${esc(c.name)}</b><p>${esc(c.text)}</p>${me ? `<button class="g" data-rp="${r ? c.parent : c.id}">پاسخ</button> ` : ""}${me && (c.uid == me.uid || adm()) ? `<button class="d" data-dc="${c.id}">حذف</button>` : ""}</div>`;
+            const el = $("#cm");
+            if (el)
+              el.innerHTML =
+                a
+                  .filter((c) => !c.parent)
+                  .map(
+                    (c) =>
+                      row(c, 0) +
+                      a
+                        .filter((r) => r.parent == c.id)
+                        .map((r) => row(r, 1))
+                        .join(""),
+                  )
+                  .join("") || '<p class="mu">اولین نظر را بنویس.</p>';
+          },
+        );
+      }
+      async function favs() {
+        const s = await getDocs(collection(db, "users", me.uid, "favs"));
+        $("#v").innerHTML =
+          `<h1>علاقه‌مندی‌ها</h1><div class="grid">${s.docs.map((d) => card(d.data())).join("") || '<p class="mu">خالی است.</p>'}</div>`;
+      }
+      function profile() {
+        $("#v").innerHTML =
+          `<h1>پروفایل</h1><form id="pf"><input name="name" value="${esc(prof.name)}" required><button>ذخیره نام</button></form><form id="pw"><input name="p" type="password" minlength="6" placeholder="رمز جدید" required><button>تغییر رمز</button></form>
+ <div class="row"><button class="g" id="th">تم روز / شب</button><button class="d" id="lo">خروج</button></div>`;
+        $("#pf").onsubmit = async (e) => {
+          e.preventDefault();
+          prof.name = new FormData(e.target).get("name");
+          await updateDoc(doc(db, "users", me.uid), { name: prof.name });
+          alert("ذخیره شد");
+        };
+        $("#pw").onsubmit = async (e) => {
+          e.preventDefault();
+          try {
+            await updatePassword(me, new FormData(e.target).get("p"));
+            alert("رمز تغییر کرد");
+          } catch {
+            alert("برای تغییر رمز، یک‌بار خارج و دوباره وارد شو.");
+          }
+        };
+        $("#th").onclick = () => {
+          localStorage.t = document.documentElement.dataset.t =
+            localStorage.t == "light" ? "dark" : "light";
+        };
+        $("#lo").onclick = () => signOut(auth);
+      }
+      async function admin() {
+        if (!adm()) return;
+        const V = $("#v"),
+          us =
+            role() == "owner"
+              ? (await getDocs(collection(db, "users"))).docs
+              : [];
+        V.innerHTML = `<h1>پنل مدیریت</h1><h2>افزودن انیمه / فیلم / سریال</h2><form id="tf"><select name="type"><option value="anime">انیمه</option><option value="movie">فیلم</option><option value="tv">سریال</option></select><input name="title" placeholder="عنوان" required><input name="poster" placeholder="لینک پوستر"><input name="genres" placeholder="ژانرها (با ویرگول)"><textarea name="desc" placeholder="توضیحات"></textarea><button>افزودن</button></form>
+ <p class="mu">برای افزودن قسمت یا فصل، وارد صفحه همان عنوان شو.</p>
+ ${
+   role() == "owner"
+     ? `<h2>ادمین جدید</h2><form id="af"><input name="name" placeholder="نام" required><input name="email" type="email" placeholder="ایمیل" required><input name="p" placeholder="رمز (حداقل ۶ کاراکتر)" minlength="6" required><button>ساخت ادمین</button></form><h2>کاربران</h2>${us
+         .map((d) => {
+           const u = d.data();
+           return `<div class="box row" style="align-items:center"><b style="flex:1">${esc(u.name)}</b>${u.role == "owner" ? "مالک" : `<select data-u="${d.id}" style="width:auto"><option ${u.role == "user" ? "selected" : ""}>user</option><option ${u.role == "admin" ? "selected" : ""}>admin</option></select><button class="d" data-du="${d.id}">حذف</button>`}</div>`;
+         })
+         .join("")}`
+     : ""
+ }`;
+        V.onsubmit = async (e) => {
+          e.preventDefault();
+          const f = Object.fromEntries(new FormData(e.target));
+          if (e.target.id == "tf") {
+            f.genres = f.genres
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            await addDoc(collection(db, "titles"), f);
+            alert("اضافه شد");
+            e.target.reset();
+          }
+          if (e.target.id == "af") {
+            const s = initializeApp(cfg, "s" + Date.now()),
+              a = getAuth(s);
+            try {
+              const c = await createUserWithEmailAndPassword(a, f.email, f.p);
+              await setDoc(doc(db, "users", c.user.uid), {
+                name: f.name,
+                role: "user",
+              });
+              await updateDoc(doc(db, "users", c.user.uid), { role: "admin" });
+              await signOut(a);
+              alert("ادمین ساخته شد");
+              admin();
+            } catch (x) {
+              alert(x.message);
+            }
+          }
+        };
+        V.onchange = async (e) => {
+          if (e.target.dataset.u)
+            await updateDoc(doc(db, "users", e.target.dataset.u), {
+              role: e.target.value,
+            });
+        };
+        V.onclick = async (e) => {
+          const u = e.target.dataset.du;
+          if (u && confirm("کاربر حذف شود؟")) {
+            await deleteDoc(doc(db, "users", u));
+            admin();
+          }
+        };
+      }
+      function login() {
+        $("#v").innerHTML =
+          `<h1>ورود / ثبت‌نام</h1><form id="lf"><input name="name" placeholder="نام (فقط برای ثبت‌نام)"><input name="email" type="email" placeholder="ایمیل" required><input name="p" type="password" placeholder="رمز" minlength="6" required><button value="in">ورود</button><button class="g" value="up">ثبت‌نام</button></form>`;
+        $("#lf").onsubmit = async (e) => {
+          e.preventDefault();
+          const f = Object.fromEntries(new FormData(e.target));
+          try {
+            if (e.submitter.value == "up") {
+              const c = await createUserWithEmailAndPassword(
+                auth,
+                f.email,
+                f.p,
+              );
+              await setDoc(doc(db, "users", c.user.uid), {
+                name: f.name || "کاربر",
+                role: "user",
+              });
+            } else await signInWithEmailAndPassword(auth, f.email, f.p);
+          } catch {
+            alert("ایمیل یا رمز اشتباه است یا حساب موجود است.");
+          }
+        };
+      }
+      function nav() {
+        const h = location.hash || "#/";
+        $("#n").innerHTML = [
+          ["#/", "خانه"],
+          ...(me ? [["#/f", "علاقه‌مندی"]] : []),
+          ...(adm() ? [["#/a", "مدیریت"]] : []),
+          ["#/p", me ? "پروفایل" : "ورود"],
+        ]
+          .map(
+            ([u, t]) => `<a href="${u}" class="${h == u ? "on" : ""}">${t}</a>`,
+          )
+          .join("");
+      }
+      async function route() {
+        unsub?.();
+        unsub = null;
+        rep = null;
+        const h = location.hash || "#/",
+          V = $("#v");
+        V.onclick = V.onsubmit = V.onchange = null;
+        nav();
+        if (h.startsWith("#/t/")) return detail(h.slice(4));
+        if (h == "#/f") return me ? favs() : login();
+        if (h == "#/a") return admin();
+        if (h == "#/p") return me ? profile() : login();
+        await home();
+        V.onclick = (e) => {
+          const t = e.target,
+            g = (s) => t.closest(s)?.dataset;
+          if (g("[data-go]")) location.hash = g("[data-go]").go;
+          if (g("[data-ty]")) {
+            st = { type: g("[data-ty]").ty, genre: "", q: "" };
+            home();
+          }
+          if (g("[data-g]") != undefined) {
+            st.genre = g("[data-g]").g;
+            home();
+          }
+        };
+        V.onsubmit = (e) => {
+          e.preventDefault();
+          st.q = new FormData(e.target).get("q");
+          home();
+        };
+      }
+      onAuthStateChanged(auth, async (u) => {
+        me = u;
+        prof = u ? (await getDoc(doc(db, "users", u.uid))).data() : null;
+        if (u && !prof) prof = { name: "کاربر", role: "user" };
+        route();
+      });
+      addEventListener("hashchange", route);
+      if ("serviceWorker" in navigator)
+        navigator.serviceWorker.register("sw.js");
+    </script>
+  </body>
+</html>
